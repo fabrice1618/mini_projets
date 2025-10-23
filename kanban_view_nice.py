@@ -124,7 +124,7 @@ def create_project_column(projet_data, taches):
         # En-tête de la colonne
         with ui.card_section().classes('pb-2'):
             # Titre du projet
-            ui.label(projet_data['titre']).classes('text-lg font-bold mb-2 break-words')
+            ui.label(projet_data['titre']).classes('text-lg font-bold mb-2 break-words').style('color: #000000;')
 
             # Statut du projet
             statut_text = "OUVERT" if projet_data['statut'] == 'ouvert' else "FERMÉ"
@@ -192,21 +192,77 @@ def load_kanban_data():
 @ui.page('/')
 def main_page():
     """Page principale de l'application Kanban"""
+    # État du panneau IA
+    panel_visible = {'value': False}
+    ai_response = {'text': ''}
+
+    def toggle_ai_panel():
+        """Bascule l'affichage du panneau IA"""
+        panel_visible['value'] = not panel_visible['value']
+        ai_panel.set_visibility(panel_visible['value'])
+        if panel_visible['value']:
+            ai_panel.classes(remove='panel-hidden', add='panel-visible')
+        else:
+            ai_panel.classes(remove='panel-visible', add='panel-hidden')
+
+    def send_prompt():
+        """Envoie le prompt à l'IA (placeholder pour l'instant)"""
+        user_prompt = prompt_input.value
+        if user_prompt.strip():
+            # Placeholder - à remplacer par l'appel réel à l'IA
+            ai_response['text'] += f"\n\n> Vous: {user_prompt}\n\nIA: Réponse simulée pour '{user_prompt}'\n"
+            response_area.set_text(ai_response['text'])
+            prompt_input.value = ''
+
     # En-tête
-    with ui.header().classes('items-center justify-between bg-primary text-white').style('height: 80px; padding: 0 20px;'):
-        ui.label('Vue Kanban - Projets et Tâches').classes('text-2xl font-bold')
-        ui.button('Rafraîchir', on_click=refresh_kanban).props('outline')
+    with ui.header().classes('items-center justify-between').style('height: 80px; padding: 0 20px; background-color: #1f2937;'):
+        with ui.row().classes('items-center gap-4'):
+            ui.label('mini projets').classes('text-2xl font-bold').style('color: white;')
+            ui.button(icon='chevron_right', on_click=toggle_ai_panel).props('outline').style('color: white; border-color: white; border-width: 2px;').tooltip('prompt IA')
+        ui.button('Rafraîchir', on_click=refresh_kanban).props('outline').style('color: white; border-color: white;')
+
+    # Panneau IA (initialement caché)
+    with ui.column().classes('w-full panel-hidden').style(
+        'background-color: #f9fafb; border-bottom: 1px solid #d1d5db; padding: 15px; '
+        'overflow: hidden; max-height: 0; transition: max-height 0.3s ease-in-out;'
+    ).bind_visibility_from(panel_visible, 'value') as ai_panel:
+
+        # Zone de saisie du prompt avec bouton d'envoi
+        with ui.row().classes('w-full items-end gap-2 mb-3'):
+            prompt_input = ui.textarea(
+                placeholder='Posez votre question ou donnez une instruction...'
+            ).classes('flex-grow').style('min-height: 80px; background-color: white; border: 2px solid #3b82f6;')
+
+            ui.button('Envoyer', on_click=send_prompt, icon='send').props('color=primary').classes('mb-1')
+
+        ui.separator().classes('my-2')
+
+        # Zone de réponse de l'IA
+        with ui.scroll_area().classes('w-full').style('height: 200px; background-color: white; border: 1px solid #d1d5db; border-radius: 4px; padding: 10px;'):
+            response_area = ui.label(ai_response.get('text', 'Les réponses de l\'IA apparaîtront ici...')).classes('text-sm whitespace-pre-wrap').style('color: #374151;')
 
     # Contenu principal
     with ui.column().classes('w-full'):
         load_kanban_data()
 
+    # Styles CSS pour l'animation
+    ui.add_head_html('''
+        <style>
+            .panel-hidden {
+                max-height: 0 !important;
+            }
+            .panel-visible {
+                max-height: 400px !important;
+            }
+        </style>
+    ''')
+
 
 def main():
     """Point d'entrée de l'application"""
     ui.run(
-        title='Gestion de Projets - Vue Kanban',
-        dark=True,
+        title='mini projets',
+        dark=False,
         reload=False,
         port=8080
     )
