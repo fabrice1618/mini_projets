@@ -10,6 +10,7 @@ from datetime import datetime
 from database import ouvrir_database
 from projet_db import lister_projets
 from tache_db import lister_taches
+from ai_assistant import process_user_request
 
 
 # Couleurs pour les types de tâches
@@ -206,12 +207,20 @@ def main_page():
             ai_panel.classes(remove='panel-visible', add='panel-hidden')
 
     def send_prompt():
-        """Envoie le prompt à l'IA (placeholder pour l'instant)"""
+        """Envoie le prompt à l'IA"""
         user_prompt = prompt_input.value
         if user_prompt.strip():
-            # Placeholder - à remplacer par l'appel réel à l'IA
-            ai_response['text'] += f"\n\n> Vous: {user_prompt}\n\nIA: Réponse simulée pour '{user_prompt}'\n"
+            # Appeler l'IA
+            result = process_user_request(user_prompt)
+
+            # Afficher le résultat
+            ai_response['text'] += f"\n\n> Vous: {user_prompt}\n\n{result['message']}\n"
             response_area.set_text(ai_response['text'])
+
+            # Rafraîchir l'affichage si modification de la DB
+            if result['modified']:
+                refresh_kanban()
+
             prompt_input.value = ''
 
     # En-tête
