@@ -37,10 +37,10 @@ def execute_tool_call(tool_name, arguments):
     Returns:
         dict: Résultat de l'exécution avec 'success', 'message', et optionnellement 'data'
     """
-    try:
-        # Ouvrir la connexion DB
-        conn, cursor = ouvrir_database()
+    # Ouvrir la connexion DB
+    conn, cursor = ouvrir_database()
 
+    try:
         result = {
             "success": False,
             "message": "",
@@ -51,11 +51,16 @@ def execute_tool_call(tool_name, arguments):
         # ==================== PROJETS ====================
 
         if tool_name == "creer_projet":
+            # Normaliser le statut (enlever les accents)
+            statut = arguments.get("statut", "ouvert")
+            if statut and "ferm" in statut.lower():
+                statut = "ferme"
+
             projet_id = projet_db.creer_projet(
                 conn, cursor,
                 titre=arguments.get("titre"),
                 description=arguments.get("description"),
-                statut=arguments.get("statut", "ouvert")
+                statut=statut
             )
             result["success"] = True
             result["message"] = f"✅ Projet '{arguments.get('titre')}' créé avec succès (ID: {projet_id})"
@@ -73,12 +78,24 @@ def execute_tool_call(tool_name, arguments):
                 result["message"] = f"❌ Projet ID {arguments.get('projet_id')} non trouvé"
 
         elif tool_name == "modifier_projet":
+            # Normaliser le statut si fourni (enlever les accents)
+            statut_raw = arguments.get("statut")
+            statut = None
+
+            if statut_raw:
+                statut_lower = str(statut_raw).lower()
+                if "ferm" in statut_lower:
+                    statut = "ferme"
+                elif "ouvert" in statut_lower:
+                    statut = "ouvert"
+                # Sinon statut reste None et ne sera pas mis à jour
+
             success = projet_db.modifier_projet(
                 conn, cursor,
                 projet_id=arguments.get("projet_id"),
                 titre=arguments.get("titre"),
                 description=arguments.get("description"),
-                statut=arguments.get("statut")
+                statut=statut
             )
             if success:
                 result["success"] = True
@@ -99,9 +116,16 @@ def execute_tool_call(tool_name, arguments):
                 result["message"] = f"❌ Impossible de supprimer le projet ID {arguments.get('projet_id')}"
 
         elif tool_name == "lister_projets":
+            # Normaliser le statut si fourni (enlever les accents)
+            statut = arguments.get("statut")
+            if statut and "ferm" in statut.lower():
+                statut = "ferme"
+            elif statut and "ouvert" in statut.lower():
+                statut = "ouvert"
+
             projets = projet_db.lister_projets(
                 conn, cursor,
-                statut=arguments.get("statut")
+                statut=statut
             )
             result["success"] = True
             if projets:
@@ -198,9 +222,6 @@ def execute_tool_call(tool_name, arguments):
         else:
             raise AIAssistantError(f"Tool inconnu: {tool_name}")
 
-        # Fermer la connexion
-        conn.close()
-
         return result
 
     except Exception as e:
@@ -210,6 +231,9 @@ def execute_tool_call(tool_name, arguments):
             "data": None,
             "modified": False
         }
+    finally:
+        # Toujours fermer la connexion, même en cas d'erreur
+        conn.close()
 
 
 def format_result_for_display(result):
@@ -228,16 +252,8 @@ def format_result_for_display(result):
     if result.get("data"):
         data = result["data"]
 
-        # Formater les projets
-        if isinstance(data, list) and len(data) > 0 and "projet_id" in data[0]:
-            message += "\n\n**Projets:**\n"
-            for projet in data[:5]:  # Limiter à 5 pour l'affichage
-                message += f"  • [{projet['projet_id']}] {projet['titre']} - {projet['statut']}\n"
-            if len(data) > 5:
-                message += f"  ... et {len(data) - 5} autre(s)\n"
-
-        # Formater les tâches
-        elif isinstance(data, list) and len(data) > 0 and "tache_id" in data[0]:
+        # Formater les tâches (vérifier en premier car elles ont aussi projet_id)
+        if isinstance(data, list) and len(data) > 0 and "tache_id" in data[0]:
             message += "\n\n**Tâches:**\n"
             for tache in data[:5]:  # Limiter à 5 pour l'affichage
                 echeance = tache.get('echeance_absolue', 'Non définie')
@@ -247,18 +263,15 @@ def format_result_for_display(result):
             if len(data) > 5:
                 message += f"  ... et {len(data) - 5} autre(s)\n"
 
-        # Formater un projet unique
-        elif isinstance(data, dict) and "projet_id" in data:
-            # Vérifier si c'est un projet complet ou juste un ID
-            if "titre" in data:
-                message += f"\n\n**Détails:**\n"
-                message += f"  • Titre: {data['titre']}\n"
-                message += f"  • Statut: {data['statut']}\n"
-                if data.get('description'):
-                    message += f"  • Description: {data['description']}\n"
-            # Sinon c'est juste un retour de création avec l'ID
+        # Formater les projets
+        elif isinstance(data, list) and len(data) > 0 and "projet_id" in data[0]:
+            message += "\n\n**Projets:**\n"
+            for projet in data[:5]:  # Limiter à 5 pour l'affichage
+                message += f"  • [{projet['projet_id']}] {projet['titre']} - {projet['statut']}\n"
+            if len(data) > 5:
+                message += f"  ... et {len(data) - 5} autre(s)\n"
 
-        # Formater une tâche unique
+        # Formater une tâche unique (vérifier en premier car elle a aussi projet_id)
         elif isinstance(data, dict) and "tache_id" in data:
             # Vérifier si c'est une tâche complète ou juste un ID
             if "titre" in data:
@@ -270,6 +283,17 @@ def format_result_for_display(result):
                     message += f"  • Échéance: {data['echeance_absolue']}\n"
                 if data.get('description_resumee'):
                     message += f"  • Description: {data['description_resumee']}\n"
+            # Sinon c'est juste un retour de création avec l'ID
+
+        # Formater un projet unique
+        elif isinstance(data, dict) and "projet_id" in data:
+            # Vérifier si c'est un projet complet ou juste un ID
+            if "titre" in data:
+                message += f"\n\n**Détails:**\n"
+                message += f"  • Titre: {data['titre']}\n"
+                message += f"  • Statut: {data['statut']}\n"
+                if data.get('description'):
+                    message += f"  • Description: {data['description']}\n"
             # Sinon c'est juste un retour de création avec l'ID
 
     return message

@@ -33,4 +33,6 @@ Quand tu appelles un outil:
 - Extrais correctement tous les paramètres nécessaires
 - Utilise les valeurs par défaut appropriées
 - Vérifie que les IDs sont des nombres entiers
+- IMPORTANT: Pour le statut des projets, utilise UNIQUEMENT "ouvert" ou "ferme" (sans accent)
+  Exemples: "ferme le projet" → statut="ferme", "ouvre le projet" → statut="ouvert"
 """

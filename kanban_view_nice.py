@@ -82,10 +82,12 @@ def create_task_card(tache_data):
         # Titre de la tâche
         ui.label(tache_data['titre']).classes('text-base font-bold mb-2 break-words')
 
-        # Badge du type de tâche
-        type_label = TYPE_LABELS.get(tache_data['type'], tache_data['type'].upper())
-        type_color = TYPE_COLORS.get(tache_data['type'], '#6B7280')
-        ui.badge(type_label).classes('mb-2').style(f'background-color: {type_color}; color: white;')
+        # Badges: Type de tâche et ID
+        with ui.row().classes('gap-2 mb-2'):
+            type_label = TYPE_LABELS.get(tache_data['type'], tache_data['type'].upper())
+            type_color = TYPE_COLORS.get(tache_data['type'], '#6B7280')
+            ui.badge(type_label).style(f'background-color: {type_color}; color: white;')
+            ui.badge(f"ID: {tache_data['tache_id']}").style('background-color: #6366F1; color: white;')
 
         # Échéance
         echeance_text = formater_echeance(tache_data.get('echeance_absolue'))
@@ -127,10 +129,12 @@ def create_project_column(projet_data, taches):
             # Titre du projet
             ui.label(projet_data['titre']).classes('text-lg font-bold mb-2 break-words').style('color: #000000;')
 
-            # Statut du projet
-            statut_text = "OUVERT" if projet_data['statut'] == 'ouvert' else "FERMÉ"
-            statut_color = "#10B981" if projet_data['statut'] == 'ouvert' else "#6B7280"
-            ui.badge(statut_text).style(f'background-color: {statut_color}; color: white;')
+            # Badges: Statut et ID du projet
+            with ui.row().classes('gap-2'):
+                statut_text = "OUVERT" if projet_data['statut'] == 'ouvert' else "FERMÉ"
+                statut_color = "#10B981" if projet_data['statut'] == 'ouvert' else "#6B7280"
+                ui.badge(statut_text).style(f'background-color: {statut_color}; color: white;')
+                ui.badge(f"ID: {projet_data['projet_id']}").style('background-color: #6366F1; color: white;')
 
             # Séparateur
             ui.separator().classes('my-2')
